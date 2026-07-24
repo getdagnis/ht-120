@@ -1711,6 +1711,10 @@ export const TournamentView: React.FC = () => {
       round_number: number;
       matches: Array<{ id: string; scheduled_for: string | null }>;
     }>;
+    const roundsBefore = rounds.length;
+    const currentRoundIdByMatchId = new Map(
+      rounds.flatMap((round) => round.matches.map((match) => [match.id, round.id] as const)),
+    );
     const plan = buildManualRoundNormalizationPlan(rounds);
     const usedRoundIds = new Set(plan.finalRounds.map((round) => round.roundId).filter(Boolean));
     const roundsToRemove = rounds.filter((round) => !usedRoundIds.has(round.id)).map((round) => round.id);
@@ -1771,6 +1775,18 @@ export const TournamentView: React.FC = () => {
         .eq('id', roundId);
       if (finalError) throw finalError;
     }
+
+    const matchesMoved = plan.assignments.filter((assignment) => {
+      const targetRoundId = roundIdByDate.get(assignment.dateKey) || null;
+      return currentRoundIdByMatchId.get(assignment.matchId) !== targetRoundId;
+    }).length;
+
+    return {
+      roundsBefore,
+      roundsAfter: plan.finalRounds.length,
+      matchesMoved,
+      unchanged: roundsBefore === plan.finalRounds.length && matchesMoved === 0,
+    };
   }, [tournament]);
 
   const { liveData } = useLiveMatches(

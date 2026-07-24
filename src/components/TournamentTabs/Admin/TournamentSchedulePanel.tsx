@@ -60,6 +60,13 @@ interface HtMatchFetchDiagnostics {
   latestDiscoveredDate: string | null;
 }
 
+interface ManualRoundNormalizationResult {
+  roundsBefore: number;
+  roundsAfter: number;
+  matchesMoved: number;
+  unchanged: boolean;
+}
+
 interface SchedulePanelTeam {
   id: string;
   name: string;
@@ -100,7 +107,7 @@ interface TournamentSchedulePanelProps {
   previewHtMatchAdd?: (htMatchId: string) => Promise<HtMatchAddPreview>;
   saveHtMatchAdd?: (htMatchId: string, options?: { refreshFixtures?: boolean }) => Promise<void>;
   onRefreshFixtures?: () => Promise<void>;
-  onNormalizeManualRounds?: () => Promise<void>;
+  onNormalizeManualRounds?: () => Promise<ManualRoundNormalizationResult | void>;
   fetchHtMatchSuggestions?: (options?: {
     teamHtId?: number;
     offset?: number;
@@ -580,9 +587,15 @@ export const TournamentSchedulePanel: React.FC<TournamentSchedulePanelProps> = (
     setSuggestionsError('');
     setSuggestionsNotice('');
     try {
-      await onNormalizeManualRounds();
+      const result = await onNormalizeManualRounds();
       await onRefreshFixtures?.();
-      setSuggestionsNotice('Chronological round ordering updated.');
+      setSuggestionsNotice(
+        result?.unchanged
+          ? 'Rounds are already normalised.'
+          : result
+            ? `Rounds normalised: ${result.roundsBefore} → ${result.roundsAfter}`
+            : 'Chronological round ordering updated.',
+      );
     } catch (error) {
       setSuggestionsError(
         `Chronological round ordering failed: ${error instanceof Error ? error.message : String(error)}`,

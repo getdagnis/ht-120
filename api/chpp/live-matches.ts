@@ -10,6 +10,7 @@ import {
 } from '../_lib/chpp-match-events.js';
 import { buildChppAppgUpdate } from '../_lib/appg-chpp-classifier.js';
 import type { MatchEventDetails } from '../../shared/match-events.js';
+import { parseChppStockholmDate } from '../../shared/chpp-dates.js';
 
 interface LiveMatchResult {
   status: 'arranged' | 'ongoing' | 'finished';
@@ -95,6 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const xml = await response.text();
 
       const finishedDate = readChppTag(xml, 'FinishedDate');
+      const matchDate = parseChppStockholmDate(readChppTag(xml, 'MatchDate'));
       const finished = (finishedDate && finishedDate !== '0001-01-01 00:00:00') || xml.includes('<MatchStatus>2</MatchStatus>');
       const isOngoing = xml.includes('<MatchStatus>1</MatchStatus>');
       const status = finished ? 'finished' : isOngoing ? 'ongoing' : 'arranged';
@@ -232,6 +234,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         match_event_details: eventDetails,
         actual_ht_home_team_id: actualHtHomeTeamId,
         actual_ht_away_team_id: actualHtAwayTeamId,
+        ...(matchDate ? { scheduled_for: matchDate.toISOString() } : {}),
       })
         .eq('tournament_id', String(tournament_id))
         .eq('ht_match_id', htMatchIdNum);

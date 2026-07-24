@@ -17,6 +17,7 @@ import {
 } from '../_lib/hattrick-time.js';
 import { isFriendlyInsideAcceptedWindow } from '../_lib/match-window.js';
 import type { MatchEventDetails } from '../../shared/match-events.js';
+import { parseChppStockholmDate } from '../../shared/chpp-dates.js';
 import {
   buildArchiveDateChunks,
   mergeChppMatchesById,
@@ -431,7 +432,7 @@ async function fetchMatchDetailsById(
   const actualAwayTeamName = xml.match(/<AwayTeam>[\s\S]*?<AwayTeamName>([^<]+)<\/AwayTeamName>/i)?.[1] || null;
   const matchType = parseInt(readChppTag(xml, 'MatchType') || '0', 10) || null;
   const matchDateText = readChppTag(xml, 'MatchDate');
-  const matchDate = matchDateText ? new Date(matchDateText.replace(' ', 'T')) : null;
+  const matchDate = parseChppStockholmDate(matchDateText);
   const finishedDate = readChppTag(xml, 'FinishedDate');
   const matchStatus = readChppTag(xml, 'MatchStatus');
   const finished = (finishedDate && finishedDate !== '0001-01-01 00:00:00') || matchStatus === '2';

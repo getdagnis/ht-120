@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getAuthHeader } from './chpp-auth.js';
+import { parseChppStockholmDate } from '../../shared/chpp-dates.js';
 import {
   parseManagerCompendiumXml,
   parseMatchesXml,
@@ -42,7 +43,8 @@ const BOOKED_FRIENDLY_MATCH_TYPES = new Set([4, 5, 8, 9]);
 export function isBookedFriendlyMatch(match: ParsedMatch, now = new Date()): boolean {
   if (!BOOKED_FRIENDLY_MATCH_TYPES.has(match.matchType)) return false;
 
-  const matchDate = new Date(match.matchDate.replace(' ', 'T'));
+  const matchDate = parseChppStockholmDate(match.matchDate);
+  if (!matchDate) return false;
   const validDate = Number.isFinite(matchDate.getTime()) && matchDate > now;
   if (!validDate) return false;
 

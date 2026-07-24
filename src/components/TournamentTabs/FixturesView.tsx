@@ -6,6 +6,7 @@ import { ArrowClockwise, ArrowRight, CopySimple, Check } from 'phosphor-react';
 import { Tooltip } from 'react-tooltip';
 import { calculateMatchDate } from '../../utils/ht-data';
 import { getHattrickWeekDetails } from '../../utils/hattrick-calendar';
+import { getImportedFixtureRoundPeriod } from '../../utils/manual-rounds';
 import type { AppgOutcome } from '../../utils/appg';
 import type { MatchEventDetails } from '../../../shared/match-events';
 import styles from '../../pages/Public/TournamentView.module.sass';
@@ -233,10 +234,9 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
 
   const resolveMatchDate = React.useCallback(
     (round: { created_at: string; round_number: number }, match: FixtureMatch) =>
-      match.match_date ??
-      (match.scheduled_for
+      match.scheduled_for
         ? new Date(match.scheduled_for)
-        : calculateMatchDate(round.created_at, round.round_number, match.home_team?.country_name)),
+        : match.match_date ?? calculateMatchDate(round.created_at, round.round_number, match.home_team?.country_name),
     [],
   );
 
@@ -341,6 +341,7 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
 
         const roundDate = round.matches[0] ? resolveMatchDate(round, round.matches[0]) : null;
         const roundWeek = roundDate ? getHattrickWeekDetails(roundDate) : null;
+        const roundPeriod = roundDate ? getImportedFixtureRoundPeriod(roundDate) : null;
 
         const formatMatch = (m: FixtureMatch, isNext: boolean) => {
           const hasPenaltyShootout =
@@ -393,7 +394,8 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                     <span>Round {round.round_number}</span>
                     {roundDate && roundWeek && (
                       <span className={styles.roundDate}>
-                        HT Week {roundWeek.htWeek} •{' '}
+                        HT Week {roundWeek.htWeek}
+                        {roundPeriod !== 'full_week' ? ` • ${roundPeriod === 'weekend' ? 'Weekend' : 'Midweek'}` : ''} •{' '}
                         {roundDate.toLocaleDateString('lv-LV', {
                           timeZone: 'Europe/Stockholm',
                           day: '2-digit',
