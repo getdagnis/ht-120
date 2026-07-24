@@ -30,6 +30,9 @@ interface LiveMatchResult {
   appg_outcome?: 'ET3' | 'ET2' | 'PS1' | 'RT0' | 'OPW' | 'needs_review';
   appg_outcome_source?: 'unclassified' | 'chpp';
   match_event_details?: MatchEventDetails;
+  raw_match_date?: string;
+  parsed_match_date?: string;
+  persisted_scheduled_for?: string | null;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -96,7 +99,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const xml = await response.text();
 
       const finishedDate = readChppTag(xml, 'FinishedDate');
-      const matchDate = parseChppStockholmDate(readChppTag(xml, 'MatchDate'));
+      const rawMatchDate = readChppTag(xml, 'MatchDate');
+      const matchDate = parseChppStockholmDate(rawMatchDate);
+      if (!matchDate) throw new Error(`Invalid CHPP MatchDate: ${rawMatchDate}`);
       const finished = (finishedDate && finishedDate !== '0001-01-01 00:00:00') || xml.includes('<MatchStatus>2</MatchStatus>');
       const isOngoing = xml.includes('<MatchStatus>1</MatchStatus>');
       const status = finished ? 'finished' : isOngoing ? 'ongoing' : 'arranged';
@@ -214,7 +219,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         match_event_details: eventDetails,
       };
 
-      await supabase.from('matches').update({
+      const { data: persistedMatch, error: persistenceError } = await supabase.from('matches').update({
         home_goals: status === 'arranged' ? null : homeGoals,
         away_goals: status === 'arranged' ? null : awayGoals,
         completed: finished,
@@ -234,10 +239,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         match_event_details: eventDetails,
         actual_ht_home_team_id: actualHtHomeTeamId,
         actual_ht_away_team_id: actualHtAwayTeamId,
-        ...(matchDate ? { scheduled_for: matchDate.toISOString() } : {}),
+        scheduled_for: matchDate.toISOString(),
       })
         .eq('tournament_id', String(tournament_id))
-        .eq('ht_match_id', htMatchIdNum);
+        .eq('ht_match_id', htMatchIdNum)
+        .select('id, ht_match_id, scheduled_for')
+        .single();
+      if (persistenceError) throw persistenceError;
+      if (!persistedMatch) throw new Error(`No persisted fixture returned for Hattrick match ${htMatchIdNum}.`);
+
+      results[htMatchId] = {
+        ...results[htMatchId],
+        raw_match_date: rawMatchDate,
+        parsed_match_date: matchDate.toISOString(),
+        persisted_scheduled_for: persistedMatch.scheduled_for,
+      };
     }
     return res.status(200).json({ results });
   } catch (error) {
