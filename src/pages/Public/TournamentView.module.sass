@@ -480,6 +480,8 @@
 
 .center, .center120
   text-align: center
+  @media (max-width: 1120px)
+    padding: 0.5rem
 
 .center120
   color: var(--accent-2)
@@ -509,6 +511,8 @@
 
   @media (max-width: 620px)
     padding: 0.5rem 1rem 0.5rem 0
+  @media (max-width: 1120px)
+    padding: 0.5rem 1rem 0.5rem 0
 
 .teamInfo
   display: flex
@@ -517,6 +521,8 @@
   gap: 0.75rem
   box-sizing: border-box
   @media (max-width: 620px)
+    min-width: 15rem
+  @media (max-width: 1120px)
     min-width: 15rem
 
 .teamTextContainer
