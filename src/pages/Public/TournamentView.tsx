@@ -642,7 +642,8 @@ export const TournamentView: React.FC = () => {
         if (data?.canViewRoles) {
           setOriginalOrganizer({
             hattrick_user_id: data.organizerUserId || null,
-            manager_name: data.organizerManagerName || (data.isOriginalOrganizer ? data.viewerManagerName || null : null) || null,
+            manager_name:
+              data.organizerManagerName || (data.isOriginalOrganizer ? data.viewerManagerName || null : null) || null,
           });
           const rolesResponse = await fetch(
             `/api/app?route=tournament-roles&tournamentId=${encodeURIComponent(tournament.id)}`,
@@ -892,13 +893,14 @@ export const TournamentView: React.FC = () => {
   const verifiedRoleAccess = Boolean(roleAccess?.canViewAdmin);
   const oauthRoleAccess = Boolean(verifiedRoleAccess && adminAuthSource === 'oauth_role');
   const delegatedRole = roleAccess?.currentRole || null;
-  const verifiedRoleLabel = roleAccess?.isImplicitSuperadmin && !delegatedRole
-    ? 'Site administrator · Organiser access'
-    : delegatedRole === 'original_organizer'
-      ? 'Organiser'
-      : delegatedRole
-        ? TOURNAMENT_ROLE_LABELS[delegatedRole]
-        : 'Tournament admin';
+  const verifiedRoleLabel =
+    roleAccess?.isImplicitSuperadmin && !delegatedRole
+      ? 'Overloard'
+      : delegatedRole === 'original_organizer'
+        ? 'Organiser'
+        : delegatedRole
+          ? TOURNAMENT_ROLE_LABELS[delegatedRole]
+          : 'Tournament admin';
   const isPressOfficer = oauthRoleAccess && delegatedRole === 'press_officer';
   const canManageOperationalAdmin = Boolean(
     isAdminAuthenticated &&
@@ -907,7 +909,7 @@ export const TournamentView: React.FC = () => {
   );
   const adminAccessMode = oauthRoleAccess
     ? roleAccess?.isImplicitSuperadmin && !delegatedRole
-      ? 'Site administrator · Organiser access'
+      ? 'Overloard'
       : delegatedRole === 'original_organizer'
         ? 'Organiser'
         : delegatedRole
@@ -4942,11 +4944,17 @@ export const TournamentView: React.FC = () => {
                   ) : (
                     <form onSubmit={verifiedRoleAccess ? handleOrganizerLogin : handleAdminLogin}>
                       <div className={styles.authField}>
-                        <label>{verifiedRoleAccess ? 'Sign in with your Hattrick account:' : 'Tournament Password'}</label>
+                        <label>
+                          {verifiedRoleAccess ? 'Sign in with your Hattrick account:' : 'Tournament Password'}
+                        </label>
                         {verifiedRoleAccess ? (
                           <input
                             type="text"
-                            value={roleAccess?.viewerManagerName ? `${roleAccess.viewerManagerName} (${verifiedRoleLabel})` : organizerLoginLabel}
+                            value={
+                              roleAccess?.viewerManagerName
+                                ? `${roleAccess.viewerManagerName} (${verifiedRoleLabel})`
+                                : organizerLoginLabel
+                            }
                             readOnly
                             className={styles.readOnlyName}
                           />
@@ -4967,7 +4975,8 @@ export const TournamentView: React.FC = () => {
                         <p className={styles.authError}>Invalid password. Please try again.</p>
                       )}
                       <Button type="submit" variant="primaryDanger" size="md">
-                        {verifiedRoleAccess ? `Sign in as ${verifiedRoleLabel}` : 'Login'} <ArrowRight size={18} weight="bold" />
+                        {verifiedRoleAccess ? `Sign in as ${verifiedRoleLabel}` : 'Login'}{' '}
+                        <ArrowRight size={18} weight="bold" />
                       </Button>
                     </form>
                   )}
