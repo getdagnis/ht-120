@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "/screens/:path*",
+      "destination": "/s/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/testing",
