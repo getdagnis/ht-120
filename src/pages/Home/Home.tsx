@@ -447,7 +447,7 @@ export const Home: React.FC = () => {
             </span>
           </div>
           <div className={styles.tTeams}>
-            {t.teams.slice(0, 6).map((team) => (
+            {t.teams.slice(0, 8).map((team) => (
               <span key={team.id} className={styles.teamChip}>
                 {team.name}
               </span>
