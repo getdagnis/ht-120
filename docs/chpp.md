@@ -44,6 +44,27 @@ Do not use Hattrick website pages or undocumented interfaces. CHPP products must
 - Result sync uses `matchdetails` with `matchEvents=true`.
 - Extra time should be detected from event type `70`, match parts `3/4`, and scorer/event evidence as described in `AGENTS_CHPP_INTEGRATION.md`.
 
+### Match dates and storage convention
+
+CHPP `MatchDate` has no offset and is a Europe/Stockholm wall-clock value.
+Do not parse it as UTC by appending `Z`, and do not apply a fixed `+01:00`
+offset because Stockholm observes daylight saving time. The shared
+`parseChppStockholmDate()` helper is the correct date-aware parser when a real
+instant is required.
+
+For compatibility, linked Hattrick fixtures currently store the original
+Stockholm wall-clock components in the existing `matches.scheduled_for`
+`timestamptz` column. PostgreSQL/Supabase therefore serializes them with
+`+00:00`, even though that suffix is not the semantic timezone of the value.
+Use `parseStoredStockholmDate()` when reading a linked row for display, and
+`serializeStoredStockholmDate()` when writing a new linked row. Generated
+application schedules are different: their `scheduled_for` values are genuine
+UTC instants and must retain ordinary ISO/timestamptz handling.
+
+Never “correct” this mixed legacy convention with arbitrary hour arithmetic in
+React or by changing all fixture display to UTC/Stockholm. Keep the distinction
+at the shared parsing/serialization boundary.
+
 ## Structured Match Event Contract
 
 - Request `matchdetails` with `version=3.1&matchEvents=true`. Both parameters are required for the event-level payload.

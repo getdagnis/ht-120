@@ -53,3 +53,26 @@ export function parseChppStockholmDate(value: string | null | undefined): Date |
   }
   return Number.isFinite(instant.getTime()) ? instant : null;
 }
+
+/** Existing linked-fixture rows store Stockholm wall-clock components in an ISO-shaped value. */
+export function parseStoredStockholmDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)/);
+  return match ? parseChppStockholmDate(`${match[1]} ${match[2]}`) : null;
+}
+
+/**
+ * Preserve the legacy linked-fixture representation explicitly.
+ *
+ * The existing `matches.scheduled_for` timestamptz column stores CHPP's
+ * Stockholm wall-clock components with a `+00:00` suffix. This is not a UTC
+ * instant; the suffix is only how the legacy value is serialized by the
+ * database. Generated schedules use real UTC instants and must not use this.
+ */
+export function serializeStoredStockholmDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const match = value.trim().match(
+    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)$/,
+  );
+  return match ? `${match[1]}T${match[2]}+00:00` : null;
+}

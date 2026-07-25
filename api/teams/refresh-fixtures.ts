@@ -17,7 +17,7 @@ import {
 } from '../_lib/hattrick-time.js';
 import { isFriendlyInsideAcceptedWindow } from '../_lib/match-window.js';
 import type { MatchEventDetails } from '../../shared/match-events.js';
-import { parseChppStockholmDate } from '../../shared/chpp-dates.js';
+import { serializeStoredStockholmDate } from '../../shared/chpp-dates.js';
 import {
   buildArchiveDateChunks,
   mergeChppMatchesById,
@@ -432,18 +432,20 @@ async function fetchMatchDetailsById(
   const actualAwayTeamName = xml.match(/<AwayTeam>[\s\S]*?<AwayTeamName>([^<]+)<\/AwayTeamName>/i)?.[1] || null;
   const matchType = parseInt(readChppTag(xml, 'MatchType') || '0', 10) || null;
   const matchDateText = readChppTag(xml, 'MatchDate');
-  const matchDate = parseChppStockholmDate(matchDateText);
+  const matchDate = matchDateText ? new Date(matchDateText.replace(' ', 'T')) : null;
   const finishedDate = readChppTag(xml, 'FinishedDate');
   const matchStatus = readChppTag(xml, 'MatchStatus');
   const finished = (finishedDate && finishedDate !== '0001-01-01 00:00:00') || matchStatus === '2';
   const status = finished ? 'finished' : matchStatus === '1' ? 'ongoing' : 'arranged';
   const addedMinutes = parseInt(readChppTag(xml, 'AddedMinutes') || '0', 10);
   const went120 = xml.includes('<MatchPart>3</MatchPart>') || xml.includes('<MatchPart>4</MatchPart>');
+  const storedMatchDate = serializeStoredStockholmDate(matchDateText);
 
   return {
     htMatchId: parseInt(htMatchId, 10),
     matchType,
     matchDate,
+    storedMatchDate,
     actualHtHomeTeamId,
     actualHtAwayTeamId,
     actualHomeTeamName,
@@ -953,7 +955,7 @@ async function handleAddHtMatch(req: VercelRequest, res: VercelResponse) {
       total_minutes: details.totalMinutes,
       ht_match_id: details.htMatchId,
       match_type: details.matchType,
-      scheduled_for: details.matchDate.toISOString(),
+      scheduled_for: details.storedMatchDate,
       actual_ht_home_team_id: details.actualHtHomeTeamId,
       actual_ht_away_team_id: details.actualHtAwayTeamId,
       penalty_shootout_home_goals: penaltyShootout.home,

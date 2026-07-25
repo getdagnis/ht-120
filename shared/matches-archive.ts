@@ -22,7 +22,8 @@ function readTag(block: string, tag: string) {
 }
 
 function parseDate(value: string) {
-  return parseChppStockholmDate(value);
+  const date = new Date(value.replace(' ', 'T'));
+  return Number.isFinite(date.getTime()) ? date : null;
 }
 
 export function parseChppMatchesXml(
@@ -93,4 +94,3 @@ export function mergeChppMatchesById(matchGroups: ParsedChppMatch[][]) {
   }
   return [...merged.values()];
 }
-import { parseChppStockholmDate } from './chpp-dates.js';

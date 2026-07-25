@@ -71,6 +71,10 @@ Production means live deployed behavior. If it has not been checked against the 
 - Week 16 weekend is included by default as a regular friendly slot.
 - Schedule payloads include `scheduled_for`, `schedule_slot_type`, and `include_week15_weekend_friendly`.
 - Regeneration locks completed, arranged, linked, or already-started rounds.
+- Linked Hattrick fixture `scheduled_for` values retain Stockholm wall-clock
+  components in the legacy `timestamptz` column, while generated schedule
+  values remain real UTC instants. The distinction is documented and handled
+  by `shared/chpp-dates.ts` and `src/utils/match-schedule.ts`.
 
 ### CHPP
 

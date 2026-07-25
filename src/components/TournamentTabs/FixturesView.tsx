@@ -7,6 +7,7 @@ import { Tooltip } from 'react-tooltip';
 import { calculateMatchDate } from '../../utils/ht-data';
 import { getHattrickWeekDetails } from '../../utils/hattrick-calendar';
 import { getImportedFixtureRoundPeriod } from '../../utils/manual-rounds';
+import { getMatchDateForRound } from '../../utils/match-schedule';
 import type { AppgOutcome } from '../../utils/appg';
 import type { MatchEventDetails } from '../../../shared/match-events';
 import styles from '../../pages/Public/TournamentView.module.sass';
@@ -234,9 +235,9 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
 
   const resolveMatchDate = React.useCallback(
     (round: { created_at: string; round_number: number }, match: FixtureMatch) =>
-      match.scheduled_for
-        ? new Date(match.scheduled_for)
-        : match.match_date ?? calculateMatchDate(round.created_at, round.round_number, match.home_team?.country_name),
+      getMatchDateForRound(round, match, match.home_team?.country_name) ||
+      match.match_date ||
+      calculateMatchDate(round.created_at, round.round_number, match.home_team?.country_name),
     [],
   );
 
