@@ -111,7 +111,7 @@ export const SeasonYearbook: React.FC<SeasonYearbookProps> = ({
     {commentsLoading && <p className={styles.mutedText}>Season yearbook comments loading...</p>}
     {!commentsLoadError && showComments && (
       <div className={styles.commentsList}>
-        {!commentsLoading && comments.length === 0 && (
+        {!commentsLoading && comments.length === 0 && emptyMessage !== null && (
           <p className={styles.mutedText}>{emptyMessage || 'Be the first to add a final thought to this Yearbook!'}</p>
         )}
         {comments.map((comment) => (
@@ -163,6 +163,7 @@ type HistoryScoringMode = keyof typeof HISTORY_SCORING_MODES;
 interface TournamentHistoryProps {
   seasons: TournamentHistorySeason[];
   currentHtUserId: number | null;
+  currentOwnedTeamIds?: string[];
   selectedSeasonNumber?: number | null;
   onSelectSeason?: (seasonNumber: number) => void;
   loadComments?: (seasonId: string) => Promise<TournamentSeasonComment[]>;
@@ -356,6 +357,7 @@ function MatchRecord({ match, snapshot }: { match: SeasonMatchSnapshot; snapshot
 export const TournamentHistory: React.FC<TournamentHistoryProps> = ({
   seasons,
   currentHtUserId,
+  currentOwnedTeamIds = [],
   selectedSeasonNumber,
   onSelectSeason,
   loadComments = defaultLoadComments,
@@ -555,9 +557,12 @@ export const TournamentHistory: React.FC<TournamentHistoryProps> = ({
     snapshot.matches.find((match) => match.id === snapshot.records.highestScoringMatchId) || null;
   const longestMatch = snapshot.matches.find((match) => match.id === snapshot.records.longestMatchId) || null;
   const commentTeamIds = new Set(comments.map((comment) => comment.team_id));
+  const currentOwnedTeamIdSet = new Set(currentOwnedTeamIds);
   const eligibleTeams = snapshot.participants.filter(
     (participant) =>
-      currentHtUserId && participant.hattrickUserId === currentHtUserId && !commentTeamIds.has(participant.teamId),
+      currentHtUserId &&
+      currentOwnedTeamIdSet.has(participant.teamId) &&
+      !commentTeamIds.has(participant.teamId),
   );
   const commentsLoading = loadedCommentsSeasonId !== selectedSeasonId;
   const seasonStartedAt =
@@ -728,6 +733,7 @@ export const TournamentHistory: React.FC<TournamentHistoryProps> = ({
       commentsLoading={commentsLoading}
       commentsLoadError={commentsLoadError}
       commentsSubmitError={commentsSubmitError}
+      emptyMessage={eligibleTeams.length > 0 ? null : "Season participants' final comments will appear here."}
       teamLogoById={Object.fromEntries(
         snapshot.participants.map((participant) => [participant.teamId, participant.logoUrl]),
       )}

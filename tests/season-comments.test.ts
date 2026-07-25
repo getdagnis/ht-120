@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { findOwnedSeasonParticipant, validateSeasonComment } from '../api/_lib/season-comments';
+import { findSeasonParticipant, validateSeasonComment } from '../api/_lib/season-comments';
 
 const snapshot = {
   participants: [
@@ -17,15 +17,22 @@ test('comment validation preserves formatting and rejects empty or oversized inp
 });
 
 test('a manager can be matched to each of multiple frozen season teams', () => {
-  assert.equal(findOwnedSeasonParticipant(snapshot, 'a', 1001)?.teamName, 'Team A');
-  assert.equal(findOwnedSeasonParticipant(snapshot, 'b', 1001)?.teamName, 'Team B');
-  assert.equal(findOwnedSeasonParticipant(snapshot, 'c', 1001), null);
-  assert.equal(findOwnedSeasonParticipant(snapshot, 'missing', 1001), null);
+  assert.equal(findSeasonParticipant(snapshot, 'a')?.teamName, 'Team A');
+  assert.equal(findSeasonParticipant(snapshot, 'b')?.teamName, 'Team B');
+  assert.equal(findSeasonParticipant(snapshot, 'c')?.teamName, 'Team C');
+  assert.equal(findSeasonParticipant(snapshot, 'missing'), null);
+});
+
+test('snapshot ownership is not required for later-linked teams', () => {
+  const unlinked = {
+    participants: [{ teamId: 'later-linked', teamName: 'Later Linked', hattrickUserId: null }],
+  };
+  assert.equal(findSeasonParticipant(unlinked, 'later-linked')?.teamName, 'Later Linked');
 });
 
 test('legacy standings snapshots can still authorize their frozen owner', () => {
   const legacy = {
     standings: [{ teamId: 'legacy', teamName: 'Old Team', hattrickUserId: 2001, managerName: 'Old Manager' }],
   };
-  assert.equal(findOwnedSeasonParticipant(legacy, 'legacy', 2001)?.teamName, 'Old Team');
+  assert.equal(findSeasonParticipant(legacy, 'legacy')?.teamName, 'Old Team');
 });

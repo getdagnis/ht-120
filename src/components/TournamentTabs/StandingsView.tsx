@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { SectionCard } from '../../components/Card/SectionCard';
+import { Button } from '../../components/Button/Button';
+import { Modal } from '../../components/Modal/Modal';
 import { ArrowRight, Check, CopySimple, Recycle, ShieldCheck } from 'phosphor-react';
 import { Tooltip } from 'react-tooltip';
 import { TeamByline } from '../TeamByline/TeamByline';
 import { SeasonYearbook, type TournamentSeasonComment } from '../TournamentHistory/TournamentHistory';
+import historyStyles from '../TournamentHistory/TournamentHistory.module.sass';
 
 import { getAppgStandingsQuota, meetsAppgStandingsQuota, type TeamStanding } from '../../utils/standings';
 import { isAppg120ScoringMode } from '../../../shared/scoring-profile';
@@ -33,8 +36,10 @@ interface StandingsViewProps {
   onVisitHistory?: () => void;
   canAddSeasonComment?: boolean;
   onCommentsLoaded?: (seasonId: string, commentCount: number) => void;
+  onCommentSubmitted?: (seasonId: string, comment: TournamentSeasonComment) => void;
   seasonId?: string | null;
   seasonNumber?: number;
+  seasonParticipantIds?: string[];
   reapplySuggestions?: {
     id: string;
     name: string;
@@ -85,8 +90,10 @@ export const StandingsView: React.FC<StandingsViewProps> = ({
   onVisitHistory,
   canAddSeasonComment = false,
   onCommentsLoaded,
+  onCommentSubmitted,
   seasonId = null,
   seasonNumber = 0,
+  seasonParticipantIds = [],
   reapplySuggestions = [],
   onReapplySuggestion,
   onRemoveReapplySuggestion,
@@ -99,9 +106,24 @@ export const StandingsView: React.FC<StandingsViewProps> = ({
   const [sortKey, setSortKey] = useState<StandingsSortKey>('default');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [seasonComments, setSeasonComments] = useState<TournamentSeasonComment[]>([]);
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [pendingCommentStanding, setPendingCommentStanding] = useState<TeamStanding | null>(null);
+  const [submittingTeamId, setSubmittingTeamId] = useState<string | null>(null);
+  const [commentsSubmitError, setCommentsSubmitError] = useState('');
   const [standingsCopied, setStandingsCopied] = useState(false);
   const [loadedSeasonCommentsId, setLoadedSeasonCommentsId] = useState<string | null>(null);
   const seasonCommentsLoading = Boolean(seasonId && loadedSeasonCommentsId !== seasonId);
+  const eligibleCommentStandings = useMemo(() => {
+    if (seasonStatus !== 'finished' || !myHtUserId) return [];
+    const participantIds = new Set(seasonParticipantIds);
+    const commentedIds = new Set(seasonComments.map((comment) => comment.team_id));
+    return standings.filter(
+      (standing) =>
+        participantIds.has(standing.teamId) &&
+        Number(standing.hattrickUserId) === Number(myHtUserId) &&
+        !commentedIds.has(standing.teamId),
+    );
+  }, [myHtUserId, seasonComments, seasonParticipantIds, seasonStatus, standings]);
   const show120minScoring = scoringMode === '120min';
   const showAppgScoring = isAppg120ScoringMode(scoringMode);
   const enabledScoringModes = (Object.keys(STANDINGS_SCORING_MODES) as StandingsScoringMode[]).filter(
@@ -348,6 +370,31 @@ export const StandingsView: React.FC<StandingsViewProps> = ({
       cancelled = true;
     };
   }, [onCommentsLoaded, seasonId]);
+
+  const handleSubmitSeasonComment = async (standing: TeamStanding) => {
+    const draft = commentDrafts[standing.teamId] || '';
+    if (!seasonId || !draft.trim()) return;
+
+    setSubmittingTeamId(standing.teamId);
+    setCommentsSubmitError('');
+    try {
+      const response = await fetch('/api/app?route=history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seasonId, teamId: standing.teamId, comment: draft }),
+      });
+      const data = (await response.json()) as { comment?: TournamentSeasonComment; error?: string };
+      if (!response.ok || !data.comment) throw new Error(data.error || 'Could not save your season comment.');
+      setSeasonComments((current) => [...current.filter((item) => item.team_id !== standing.teamId), data.comment!]);
+      onCommentSubmitted?.(seasonId, data.comment);
+      setCommentDrafts((current) => ({ ...current, [standing.teamId]: '' }));
+      setPendingCommentStanding(null);
+    } catch (error) {
+      setCommentsSubmitError(error instanceof Error ? error.message : 'Could not save your season comment.');
+    } finally {
+      setSubmittingTeamId(null);
+    }
+  };
 
   return (
     <div className={styles.mainColumn} data-presence-pulse={presencePulse}>
@@ -623,12 +670,69 @@ export const StandingsView: React.FC<StandingsViewProps> = ({
           teamLogoById={Object.fromEntries(standings.map((standing) => [standing.teamId, standing.logoUrl]))}
           showProgress={seasonStatus === 'finished'}
           showComments={seasonStatus === 'finished'}
+          commentsSubmitError={commentsSubmitError}
           emptyMessage={
-            seasonStatus === 'finished'
-              ? undefined
-              : 'The season yearbook will open once the season concludes and its final report is published.'
+            eligibleCommentStandings.length > 0
+              ? null
+              : "Season participants' final comments will appear here."
           }
-        />
+        >
+          {eligibleCommentStandings.map((standing) => (
+            <div key={standing.teamId} className={historyStyles.commentForm}>
+              <label htmlFor={`standings-season-comment-${standing.teamId}`}>
+                Post your final comment as {standing.teamName}
+              </label>
+              <textarea
+                id={`standings-season-comment-${standing.teamId}`}
+                value={commentDrafts[standing.teamId] || ''}
+                maxLength={480}
+                rows={4}
+                placeholder="Your season's comment..."
+                onChange={(event) =>
+                  setCommentDrafts((current) => ({ ...current, [standing.teamId]: event.target.value }))
+                }
+              />
+              <div>
+                <small>{(commentDrafts[standing.teamId] || '').length}/480</small>
+                <Button
+                  size="sm"
+                  variant="primaryDanger"
+                  onClick={() => setPendingCommentStanding(standing)}
+                  disabled={!commentDrafts[standing.teamId]?.trim() || submittingTeamId === standing.teamId}
+                >
+                  Post final comment
+                </Button>
+              </div>
+              <p>This can be posted once and cannot be changed.</p>
+            </div>
+          ))}
+        </SeasonYearbook>
+      )}
+      {pendingCommentStanding && (
+        <Modal
+          isOpen
+          onClose={() => setPendingCommentStanding(null)}
+          title="Post final comment?"
+          maxWidth="500px"
+        >
+          <p>
+            This will publish your final season comment as <strong>{pendingCommentStanding.teamName}</strong>. It cannot
+            be changed later.
+          </p>
+          <div className={styles.historyReportActions}>
+            <Button variant="secondaryYellow" size="sm" onClick={() => setPendingCommentStanding(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primaryDanger"
+              size="sm"
+              onClick={() => void handleSubmitSeasonComment(pendingCommentStanding)}
+              disabled={!commentDrafts[pendingCommentStanding.teamId]?.trim() || submittingTeamId !== null}
+            >
+              {submittingTeamId ? 'Posting...' : 'Post comment'}
+            </Button>
+          </div>
+        </Modal>
       )}
       <SectionCard title="News Feed">
         <ul className={styles.newsFeed}>

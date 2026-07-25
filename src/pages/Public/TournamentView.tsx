@@ -895,7 +895,7 @@ export const TournamentView: React.FC = () => {
   const delegatedRole = roleAccess?.currentRole || null;
   const verifiedRoleLabel =
     roleAccess?.isImplicitSuperadmin && !delegatedRole
-      ? 'Overloard'
+      ? 'Site Admin'
       : delegatedRole === 'original_organizer'
         ? 'Organiser'
         : delegatedRole
@@ -909,7 +909,7 @@ export const TournamentView: React.FC = () => {
   );
   const adminAccessMode = oauthRoleAccess
     ? roleAccess?.isImplicitSuperadmin && !delegatedRole
-      ? 'Overloard'
+      ? 'Site Admin'
       : delegatedRole === 'original_organizer'
         ? 'Organiser'
         : delegatedRole
@@ -4673,6 +4673,9 @@ export const TournamentView: React.FC = () => {
               snapshot: season.snapshot_json,
             }))}
             currentHtUserId={currentHtUserId}
+            currentOwnedTeamIds={teams
+              .filter((team) => Number(team.hattrick_user_id) === currentHtUserId)
+              .map((team) => team.id)}
             tournamentSlug={tournament.slug}
             selectedSeasonNumber={selectedHistorySeasonNumber}
             onSelectSeason={handleHistorySeasonChange}
@@ -4876,6 +4879,12 @@ export const TournamentView: React.FC = () => {
             seasonNumber={currentSeason?.season_number ?? tournament.season}
             seasonStatus={currentSeason?.status === 'finished' ? 'finished' : 'ongoing'}
             onCommentsLoaded={handleHistoryCommentsLoaded}
+            onCommentSubmitted={handleHistoryCommentSubmitted}
+            seasonParticipantIds={
+              currentSeason?.snapshot_json && 'participants' in currentSeason.snapshot_json
+                ? currentSeason.snapshot_json.participants.map((participant) => participant.teamId)
+                : []
+            }
             onVisitHistory={() => handleTabChange('history')}
             canAddSeasonComment={false}
             reapplySuggestions={reapplySuggestions}

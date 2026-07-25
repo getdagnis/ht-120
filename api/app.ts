@@ -7,7 +7,7 @@ import {
   verifyForgeSessionCookie,
 } from './_lib/forge-session.js';
 import { cleanupActivityEvents, recordActivity } from './_lib/activity.js';
-import { findOwnedSeasonParticipant, validateSeasonComment } from './_lib/season-comments.js';
+import { findSeasonParticipant, validateSeasonComment } from './_lib/season-comments.js';
 import { getServiceSupabase, getSupabase } from './_lib/supabase.js';
 import { hasSuperAdminBypassCookie } from './_lib/superadmin-bypass.js';
 import {
@@ -363,7 +363,7 @@ async function handleHistory(req: VercelRequest, res: VercelResponse) {
   if (seasonError || !season) return res.status(404).json({ error: 'Season not found.' });
   if (season.status !== 'finished') return res.status(409).json({ error: 'Season comments open after the season is finished.' });
 
-  const participant = findOwnedSeasonParticipant(season.snapshot_json, teamId, session.userId);
+  const participant = findSeasonParticipant(season.snapshot_json, teamId);
   if (!participant) return res.status(403).json({ error: 'Only this season’s team owner can leave its final comment.' });
 
   const { data: ownedTeam, error: ownedTeamError } = await supabase

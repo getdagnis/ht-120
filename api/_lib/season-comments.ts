@@ -18,11 +18,7 @@ export function validateSeasonComment(comment: unknown) {
   return { comment: preserved, error: null };
 }
 
-export function findOwnedSeasonParticipant(snapshot: SeasonSnapshot | null, teamId: string, hattrickUserId: number) {
+export function findSeasonParticipant(snapshot: SeasonSnapshot | null, teamId: string) {
   const participants = snapshot?.participants || snapshot?.standings || [];
-  return (
-    participants.find(
-      (participant) => participant.teamId === teamId && Number(participant.hattrickUserId) === hattrickUserId,
-    ) || null
-  );
+  return participants.find((participant) => participant.teamId === teamId) || null;
 }
