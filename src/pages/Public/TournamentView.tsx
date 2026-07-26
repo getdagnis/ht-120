@@ -4880,6 +4880,7 @@ export const TournamentView: React.FC = () => {
             seasonStatus={currentSeason?.status === 'finished' ? 'finished' : 'ongoing'}
             onCommentsLoaded={handleHistoryCommentsLoaded}
             onCommentSubmitted={handleHistoryCommentSubmitted}
+            loadComments={loadHistoryComments}
             seasonParticipantIds={
               currentSeason?.snapshot_json && 'participants' in currentSeason.snapshot_json
                 ? currentSeason.snapshot_json.participants.map((participant) => participant.teamId)

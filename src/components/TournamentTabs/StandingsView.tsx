@@ -37,6 +37,7 @@ interface StandingsViewProps {
   canAddSeasonComment?: boolean;
   onCommentsLoaded?: (seasonId: string, commentCount: number) => void;
   onCommentSubmitted?: (seasonId: string, comment: TournamentSeasonComment) => void;
+  loadComments?: (seasonId: string) => Promise<TournamentSeasonComment[]>;
   seasonId?: string | null;
   seasonNumber?: number;
   seasonParticipantIds?: string[];
@@ -52,6 +53,12 @@ interface StandingsViewProps {
 }
 
 const DEFAULT_TEAM_LOGO = '/default-logo.png';
+const defaultLoadComments = async (seasonId: string) => {
+  const response = await fetch(`/api/app?route=history&seasonId=${encodeURIComponent(seasonId)}`);
+  const data = (await response.json()) as { comments?: TournamentSeasonComment[]; error?: string };
+  if (!response.ok) throw new Error(data.error || 'Could not load season comments.');
+  return data.comments || [];
+};
 const STANDINGS_SCORING_MODES = {
   '120min': { enabled: true, label: '120min', tooltip: '120-minute scoring' },
   '90min': { enabled: true, label: '90min', tooltip: 'Regular 90-minute scoring' },
@@ -91,6 +98,7 @@ export const StandingsView: React.FC<StandingsViewProps> = ({
   canAddSeasonComment = false,
   onCommentsLoaded,
   onCommentSubmitted,
+  loadComments = defaultLoadComments,
   seasonId = null,
   seasonNumber = 0,
   seasonParticipantIds = [],
@@ -345,12 +353,7 @@ export const StandingsView: React.FC<StandingsViewProps> = ({
     if (!seasonId) return;
 
     let cancelled = false;
-    fetch(`/api/app?route=history&seasonId=${encodeURIComponent(seasonId)}`)
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Could not load season comments.');
-        return (data.comments || []) as TournamentSeasonComment[];
-      })
+    loadComments(seasonId)
       .then((comments) => {
         if (!cancelled) {
           setSeasonComments(comments);
@@ -369,7 +372,7 @@ export const StandingsView: React.FC<StandingsViewProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [onCommentsLoaded, seasonId]);
+  }, [loadComments, onCommentsLoaded, seasonId]);
 
   const handleSubmitSeasonComment = async (standing: TeamStanding) => {
     const draft = commentDrafts[standing.teamId] || '';
@@ -677,7 +680,7 @@ export const StandingsView: React.FC<StandingsViewProps> = ({
               : "Season participants' final comments will appear here."
           }
         >
-          {eligibleCommentStandings.map((standing) => (
+          {!seasonCommentsLoading && eligibleCommentStandings.map((standing) => (
             <div key={standing.teamId} className={historyStyles.commentForm}>
               <label htmlFor={`standings-season-comment-${standing.teamId}`}>
                 Post your final comment as {standing.teamName}
